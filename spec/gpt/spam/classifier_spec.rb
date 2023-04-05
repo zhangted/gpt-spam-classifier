@@ -5,13 +5,14 @@ require "json"
 
 RSpec.describe Gpt::Spam::Classifier do
   let(:api_key) { "my-api-key" }
+  let(:model) { "my-model"}
 
   it "has a version number" do
     expect(Gpt::Spam::Classifier::VERSION).not_to be nil
   end
 
   it "request returns error without api key" do
-    expect(Gpt::Spam::Classifier.classify('', api_key: nil)).to eq(Gpt::Spam::Classifier.error_hash(NoApiKey.new))
+    expect(Gpt::Spam::Classifier.classify_single_agent('',  nil)).to eq(Gpt::Spam::Classifier.error_hash(NoApiKey.new))
   end
 
   it "returns an error message when the response is empty hash" do
@@ -19,7 +20,7 @@ RSpec.describe Gpt::Spam::Classifier do
     allow(OpenAI::Client).to receive(:new).and_return(client_mock)
     allow(client_mock).to receive(:chat).and_return({})
 
-    result = Gpt::Spam::Classifier.classify("some text", api_key: api_key)
+    result = Gpt::Spam::Classifier.classify_single_agent("some text", api_key, model)
     expect(result).to eq(Gpt::Spam::Classifier.error_hash(TypeError.new))
   end
 
@@ -36,7 +37,7 @@ RSpec.describe Gpt::Spam::Classifier do
     }
     allow(client_mock).to receive(:chat).and_return(valid_response_obj)
 
-    result = Gpt::Spam::Classifier.classify("some text", api_key: api_key)
+    result = Gpt::Spam::Classifier.classify_single_agent("some text", api_key, model)
     expect(result).to eq(JSON.parse(valid_response_obj.dig('choices', 0, 'message', 'content')))
   end
 
@@ -54,7 +55,7 @@ RSpec.describe Gpt::Spam::Classifier do
     }
     allow(client_mock).to receive(:chat).and_return(valid_response_obj)
 
-    result = Gpt::Spam::Classifier.classify("some text", api_key: api_key)
+    result = Gpt::Spam::Classifier.classify_single_agent("some text", api_key, model)
     expect(result).to eq(Gpt::Spam::Classifier.error_hash(JSON::ParserError.new))
   end
 
@@ -72,7 +73,7 @@ RSpec.describe Gpt::Spam::Classifier do
       }
       allow(client_mock).to receive(:chat).and_return(valid_response_obj)
 
-      result = Gpt::Spam::Classifier.classify("some text", api_key: api_key)
+      result = Gpt::Spam::Classifier.classify_single_agent("some text", api_key, model)
       expect(result).to eq(Gpt::Spam::Classifier.error_hash(JSON::ParserError.new))
     end
 
@@ -88,7 +89,7 @@ RSpec.describe Gpt::Spam::Classifier do
     }
     allow(client_mock).to receive(:chat).and_return(err_response_obj)
 
-    result = Gpt::Spam::Classifier.classify("some text", api_key: api_key)
+    result = Gpt::Spam::Classifier.classify_single_agent("some text", api_key, model)
     expect(result).to eq(Gpt::Spam::Classifier.error_hash(ResponseServerErrorMessage.new(err_response_obj['error']['message'])))
   end
 end

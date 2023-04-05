@@ -2,6 +2,7 @@
 
 require_relative "classifier/version"
 require "json"
+require "timeout"
 require "openai"
 # OpenAI.configure do |config|
 #   config.access_token = API_KEY
@@ -19,17 +20,35 @@ module Gpt
   module Spam
     module Classifier
       def self.error_hash(error_obj)
-        { 'error': case error_obj
+        { error: case error_obj
             when ResponseServerErrorMessage then error_obj.message
             when TypeError then 'response structure is unexpected'
             when JSON::ParserError then 'response has invalid json formatting'
             when NoApiKey then 'no api key passed through func'
+            when Timeout::Error then 'request timed out'
             else ''
             end
         }
       end
 
-      def self.classify(text, api_key: nil, model: 'gpt-3.5-turbo')
+      def self.join_errors(errors)
+        errors.reduce({ error: '' }) do |acc, hash| 
+          acc[:error] = "#{acc[:error]}#{hash[:error]}, "
+          acc
+        end
+      end
+
+      def self.join_valid_agents_responses(valid_agent_responses)
+        result = valid_agent_responses.reduce({ spam_level: 0, reason: '' }) do |acc, hash|
+          acc[:spam_level] += hash[:spam_level]
+          acc[:reason] = "#{acc[:reason]}#{hash[:reason]}, "
+          acc
+        end
+        result[:spam_level] = (result[:spam_level] / valid_agent_responses.length.to_f).floor
+        result
+      end
+
+      def self.classify_single_agent(text, api_key, model)
         raise NoApiKey if api_key.nil?
         #TODO:check configuration api key as well
 
@@ -49,10 +68,33 @@ module Gpt
         raise ResponseServerErrorMessage, err_msg unless err_msg.nil?
 
         gpt_response = response.dig("choices", 0, "message", "content")
-        gpt_response_json = JSON.parse(gpt_response)
+        gpt_response_json = JSON.parse(gpt_response, symbolize_names: true)
 
       rescue TypeError, JSON::ParserError, NoApiKey, ResponseServerErrorMessage => e
         self.error_hash(e)
+      end
+
+      def self.classify(text, api_key: nil, agents: 1, model: 'gpt-3.5-turbo')
+        threads = []
+        results = []
+
+        [agents,20].max.times do
+          threads << Thread.new do
+            begin
+              Timeout.timeout(10) do
+                results << self.classify_single_agent(text, api_key, model)
+              end
+            rescue Timeout::Error => e
+              results << self.error_hash(e)
+            end
+          end
+        end
+
+        threads.each(&:join)
+
+        with_errs, without_errs = results.partition { |result| result.key?(:error) }
+        return self.join_errors(with_errs) if without_errs.empty?
+        return self.join_valid_agents_responses(without_errs)
       end
     end
   end
