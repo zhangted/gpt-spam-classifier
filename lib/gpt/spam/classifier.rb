@@ -48,21 +48,23 @@ module Gpt
         result
       end
 
-      def self.classify_single_agent(text, api_key, model)
+      def self.classify(text, api_key: nil, model: 'gpt-3.5-turbo')
         raise NoApiKey if api_key.nil?
         #TODO:check configuration api key as well
 
         client = OpenAI::Client.new(access_token: api_key)
 
-        response = client.chat(
-          parameters: {
-              model: model,
-              messages: [{
-                role: "user",
-                content: "#{SPAM_CLASSIFIER_PROMPT} #{text}"
-              }],
-              temperature: 0.2,
-          })
+        response = Timeout.timeout(10) do
+          client.chat(
+            parameters: {
+                model: model,
+                messages: [{
+                  role: "user",
+                  content: "#{SPAM_CLASSIFIER_PROMPT} #{text}"
+                }],
+                temperature: 0.1,
+            })
+        end
 
         err_msg = response.dig('error', 'message')
         raise ResponseServerErrorMessage, err_msg unless err_msg.nil?
@@ -70,23 +72,17 @@ module Gpt
         gpt_response = response.dig("choices", 0, "message", "content")
         gpt_response_json = JSON.parse(gpt_response, symbolize_names: true)
 
-      rescue TypeError, JSON::ParserError, NoApiKey, ResponseServerErrorMessage => e
+      rescue Timeout::Error, TypeError, JSON::ParserError, NoApiKey, ResponseServerErrorMessage => e
         self.error_hash(e)
       end
 
-      def self.classify(text, api_key: nil, agents: 1, model: 'gpt-3.5-turbo')
+      def self.classify_with_multiple_agents(text, agents: 2, api_key: nil, model: 'gpt-3.5-turbo')
         threads = []
         results = []
 
-        [agents,20].max.times do
+        [agents,20].min.times do
           threads << Thread.new do
-            begin
-              Timeout.timeout(10) do
-                results << self.classify_single_agent(text, api_key, model)
-              end
-            rescue Timeout::Error => e
-              results << self.error_hash(e)
-            end
+            results << self.classify(text, api_key: api_key, model: model)
           end
         end
 
