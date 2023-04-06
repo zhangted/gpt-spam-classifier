@@ -19,24 +19,35 @@ Or install it yourself as:
     $ gem install gpt-spam-classifier
 
 ## Usage
+args:
+- `text`: Text to evaluate
 
-Basic usage:
+kwargs:
+- `api_key`: OpenAI api key
+- `model`: OpenAI model to use
+- `agents`: Number of "chats" to query (max 20)
+
 ```ruby
-    irb(main):001:0>     Gpt::Spam::Classifier.classify('my non spammy text', api_key: 'removed', model: 'gpt-3.5-turbo')
+Gpt::Spam::Classifier.classify('call this number for free stuff', api_key: 'redacted', model: 'gpt-3.5-turbo', agents:3)
 
-    => {"spam_level"=>0, "reason"=>"No spam or promotional content detected."}
+=> {:spam_level=>8, :reason=> "Promotional text with offer of free items, Promotional text with offer of free items, Promotional text with offer of free items, "}
 ```
+Results Hash:
+- `spam_level`: averages value from agents (0-10)
+- `reason`: appends reasons together from agents
 
-Error example:
+____
+## Errors example:
 ```ruby
-    irb(main):003:0>     Gpt::Spam::Classifier.classify('my non spammy text', api_key: 'removed_invalid_key', model: 'gpt-3.5-turbo')
-    => 
-    {:error=>
-    "Incorrect API key provided: removed_invalid_key. You can find your API key at https://platform.openai.com/account/api-keys."}
+Gpt::Spam::Classifier.classify('call this number for free stuff', api_key: 'redacted', model: 'gpt-10', agents:3)
+
+=> {:error=> "The model `gpt-10` does not exist, The model `gpt-10` does not exist, The model `gpt-10` does not exist, "}
 ```
+Results Hash: 
+- `error`: appends errors together from agents
 
 ## TODO
-- [ ] setup using config + handle error case
+- [ ] setup using config to set api key + handle error case
 
 
 ## Contributing
