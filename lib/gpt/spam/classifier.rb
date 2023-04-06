@@ -31,22 +31,22 @@ module Gpt
         }
       end
 
-      def self.join_errors(errors)
-        errors.reduce({ error: '' }) do |acc, hash| 
-          acc[:error] = "#{acc[:error]}#{hash[:error]}, "
-          acc
-        end
-      end
+      # def self.join_errors(errors)
+      #   errors.reduce({ error: '' }) do |acc, hash| 
+      #     acc[:error] = "#{acc[:error]}#{hash[:error]}, "
+      #     acc
+      #   end
+      # end
 
-      def self.join_valid_agents_responses(valid_agent_responses)
-        result = valid_agent_responses.reduce({ spam_level: 0, reason: '' }) do |acc, hash|
-          acc[:spam_level] += hash[:spam_level]
-          acc[:reason] = "#{acc[:reason]}#{hash[:reason]}, "
-          acc
-        end
-        result[:spam_level] = (result[:spam_level] / valid_agent_responses.length.to_f).floor
-        result
-      end
+      # def self.join_valid_agents_responses(valid_agent_responses)
+      #   result = valid_agent_responses.reduce({ spam_level: 0, reason: '' }) do |acc, hash|
+      #     acc[:spam_level] += hash[:spam_level]
+      #     acc[:reason] = "#{acc[:reason]}#{hash[:reason]}, "
+      #     acc
+      #   end
+      #   result[:spam_level] = (result[:spam_level] / valid_agent_responses.length.to_f).floor
+      #   result
+      # end
 
       def self.classify(text, api_key: nil, model: 'gpt-3.5-turbo')
         raise NoApiKey if api_key.nil?
@@ -87,10 +87,10 @@ module Gpt
         end
 
         threads.each(&:join)
-
-        with_errs, without_errs = results.partition { |result| result.key?(:error) }
-        return self.join_errors(with_errs) if without_errs.empty?
-        return self.join_valid_agents_responses(without_errs)
+        results
+        # with_errs, without_errs = results.partition { |result| result.key?(:error) }
+        # return self.join_errors(with_errs) if without_errs.empty?
+        # return self.join_valid_agents_responses(without_errs)
       end
     end
   end

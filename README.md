@@ -18,35 +18,45 @@ Or install it yourself as:
 
     $ gem install gpt-spam-classifier
 
-## Usage
+## Basic Usage
 args:
 - `text`: Text to evaluate
 
 kwargs:
 - `api_key`: OpenAI api key
 - `model`: OpenAI model to use
-- `agents`: Number of "chats" to query (max 20)
 
 ```ruby
-Gpt::Spam::Classifier.classify('call this number for free stuff', api_key: 'redacted', model: 'gpt-3.5-turbo', agents:3)
+Gpt::Spam::Classifier.classify('call this number for free stuff', api_key: 'redacted', model: 'gpt-3.5-turbo')
 
-=> {:spam_level=>8, :reason=> "Promotional text with offer of free items, Promotional text with offer of free items, Promotional text with offer of free items, "}
+=> {:spam_level=>8, :reason=> "Promotional text with offer of free items"}
 ```
-Results Hash:
-- `spam_level`: averages value from agents (0-10)
-- `reason`: appends reasons together from agents
+
+## Multiple agents
+
+additional kwargs:
+- `agents`: number of concurrent queries
+```ruby
+Gpt::Spam::Classifier.classify_with_multiple_agents('loasdlalaofnb vas asdafsc', agents: 3, api_key: 'redacted', model: 'gpt-3.5-turbo')
+
+=> [{:spam_level=>8, :reason=>"Random letters and nonsensical words indicate spam-like behavior."},
+ {:spam_level=>8, :reason=>"Random letters and nonsensical words indicate spam-like behavior."},
+ {:spam_level=>8, :reason=>"Random letters and nonsensical content often indicate spam."}]
+
+```
 
 ____
 ## Errors example:
 ```ruby
-Gpt::Spam::Classifier.classify('call this number for free stuff', api_key: 'redacted', model: 'gpt-10', agents:3)
+Gpt::Spam::Classifier.classify('call this number for free stuff', api_key: 'redacted', model: 'gpt-10')
 
-=> {:error=> "The model `gpt-10` does not exist, The model `gpt-10` does not exist, The model `gpt-10` does not exist, "}
+=> {:error=> "The model `gpt-10` does not exist"}
 ```
 Results Hash: 
 - `error`: appends errors together from agents
 
 ## TODO
+- [x] query with multiple agents
 - [ ] setup using config to set api key + handle error case
 
 
